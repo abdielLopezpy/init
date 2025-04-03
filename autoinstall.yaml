@@ -1,0 +1,124 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  # Configuración inicial
+  locale: es_ES.UTF-8
+  keyboard:
+    layout: es
+    variant: ''
+  timezone: America/Bogota
+
+  # Configuración de red (opcional, ajusta según necesites)
+  network:
+    ethernets:
+      enp0s3:
+        dhcp4: true
+    version: 2
+
+  # Configuración de usuarios
+  user-data:
+    users:
+      - name: pepe
+        gecos: Pepe User
+        passwd: "$6$exDY1mhS4KUYCE/2$z7Xb9nVfrt9gV2+3f9e9/9" # Contraseña encriptada (usa 'openssl passwd' para generar)
+        lock_passwd: false
+        shell: /bin/bash
+        sudo: ALL=(ALL) NOPASSWD:ALL
+
+  # Configuración de identidad (opcional)
+  identity:
+    hostname: pepe-Nitro-AN515-45
+    username: pepe
+    password: "$6$exDY1mhS4KUYCE/2$z7Xb9nVfrt9gV2+3f9e9/9" # Contraseña encriptada
+
+  # Configuración de almacenamiento (particionamiento)
+  storage:
+    config:
+      - type: disk
+        id: nvme0n1
+        ptable: gpt
+        wipe: superblock
+        match:
+          serial: Samsung_SSD_970_EVO_Plus_1TB_S59ANM0R121369J
+        partitions:
+          - id: nvme0n1p1
+            type: partition
+            size: 1G
+            flag: boot
+            filesystem: vfat
+            wipe: superblock
+          - id: nvme0n1p2
+            type: partition
+            size: 2G
+            filesystem: zfs
+            wipe: superblock
+          - id: nvme0n1p3
+            type: partition
+            size: 4G
+            filesystem: zfs
+            wipe: superblock
+          - id: nvme0n1p4
+            type: partition
+            size: -1  # Resto del disco
+            filesystem: zfs
+            wipe: superblock
+
+      - type: zfs
+        id: zfs-pool
+        name: rpool
+        pool:
+          vdevs:
+            - type: disk
+              id: nvme0n1p4
+          mountpoint: /
+        datasets:
+          - name: rpool/ROOT
+            mountpoint: none
+          - name: rpool/home
+            mountpoint: /home
+
+      - type: zfs
+        id: zfs-bpool
+        name: bpool
+        pool:
+          vdevs:
+            - type: disk
+              id: nvme0n1p2
+            - type: disk
+              id: nvme0n1p3
+          mountpoint: /boot
+        datasets:
+          - name: bpool/BOOT
+            mountpoint: /boot
+
+      - type: disk
+        id: nvme1n1
+        ptable: gpt
+        wipe: superblock
+        match:
+          serial: WDC_PC_SN530_SDBPNPZ-256G-1114
+        partitions:
+          - id: nvme1n1p1
+            type: partition
+            size: 1G
+            flag: boot
+            filesystem: vfat
+            wipe: superblock
+          - id: nvme1n1p2
+            type: partition
+            size: -1  # Resto del disco
+            filesystem: ext4
+            wipe: superblock
+            mount: /mnt/disco250
+
+  # Configuración de paquetes (opcional)
+  packages:
+    - zfsutils-linux
+    - openssh-server
+
+  # Actualizaciones y limpieza (opcional)
+  updates: security
+  late-commands:
+    - echo 'Instalación automatizada completada' > /target/root/autoinstall.log
+    - curtin in-target --target=/target update-grub
