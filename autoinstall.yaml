@@ -9,7 +9,7 @@ autoinstall:
     variant: ''
   timezone: America/Bogota
 
-  # Configuración de red (opcional, ajusta según necesites)
+  # Configuración de red (opcional)
   network:
     ethernets:
       enp0s3:
@@ -21,18 +21,18 @@ autoinstall:
     users:
       - name: pepe
         gecos: Pepe User
-        passwd: "$6$exDY1mhS4KUYCE/2$z7Xb9nVfrt9gV2+3f9e9/9" # Contraseña encriptada (usa 'openssl passwd' para generar)
+        passwd: "$6$exDY1mhS4KUYCE/2$z7Xb9nVfrt9gV2+3f9e9/9" # Contraseña encriptada
         lock_passwd: false
         shell: /bin/bash
         sudo: ALL=(ALL) NOPASSWD:ALL
 
-  # Configuración de identidad (opcional)
+  # Configuración de identidad
   identity:
     hostname: pepe-Nitro-AN515-45
     username: pepe
-    password: "$6$exDY1mhS4KUYCE/2$z7Xb9nVfrt9gV2+3f9e9/9" # Contraseña encriptada
+    password: "$6$exDY1mhS4KUYCE/2$z7X9nVfrt9gV2+3f9e9/9" # Contraseña encriptada
 
-  # Configuración de almacenamiento (particionamiento)
+  # Configuración de almacenamiento
   storage:
     config:
       - type: disk
@@ -112,12 +112,12 @@ autoinstall:
             wipe: superblock
             mount: /mnt/disco250
 
-  # Configuración de paquetes (opcional)
+  # Configuración de paquetes
   packages:
     - zfsutils-linux
     - openssh-server
 
-  # Actualizaciones y limpieza (opcional)
+  # Actualizaciones y limpieza
   updates: security
   late-commands:
     - echo 'Instalación automatizada completada' > /target/root/autoinstall.log
