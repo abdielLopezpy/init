@@ -1,21 +1,18 @@
 #cloud-config
 autoinstall:
   version: 1
-
   # Configuración inicial
   locale: es_ES.UTF-8
   keyboard:
     layout: es
     variant: ''
   timezone: America/Bogota
-
   # Configuración de red (opcional)
   network:
     ethernets:
       enp0s3:
         dhcp4: true
     version: 2
-
   # Configuración de usuarios
   user-data:
     users:
@@ -25,13 +22,11 @@ autoinstall:
         lock_passwd: false
         shell: /bin/bash
         sudo: ALL=(ALL) NOPASSWD:ALL
-
   # Configuración de identidad
   identity:
     hostname: pepe-Nitro-AN515-45
     username: pepe
     password: "$6$exDY1mhS4KUYCE/2$z7X9nVfrt9gV2+3f9e9/9" # Contraseña encriptada
-
   # Configuración de almacenamiento
   storage:
     config:
@@ -46,52 +41,66 @@ autoinstall:
             type: partition
             size: 1G
             flag: boot
-            filesystem: vfat
+            filesystem: ext4
+            mount: /boot/efi
             wipe: superblock
           - id: nvme0n1p2
             type: partition
             size: 2G
-            filesystem: zfs
             wipe: superblock
           - id: nvme0n1p3
             type: partition
             size: 4G
-            filesystem: zfs
             wipe: superblock
           - id: nvme0n1p4
             type: partition
             size: -1  # Resto del disco
-            filesystem: zfs
             wipe: superblock
-
+      - type: zpool
+        id: rpool
+        pool: rpool
+        vdevs:
+          - id: rpool-vdev
+            type: disk
+            path: /dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_S59ANM0R121369J-part4
+      - type: zpool
+        id: bpool
+        pool: bpool
+        mountpoint: /boot
+        vdevs:
+          - id: bpool-vdev
+            type: mirror
+            devices:
+              - /dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_S59ANM0R121369J-part2
+              - /dev/disk/by-id/nvme-Samsung_SSD_970_EVO_Plus_1TB_S59ANM0R121369J-part3
       - type: zfs
-        id: zfs-pool
-        name: rpool
-        pool:
-          vdevs:
-            - type: disk
-              id: nvme0n1p4
+        id: rpool_ROOT
+        pool: rpool
+        dataset: rpool/ROOT
+        properties:
+          mountpoint: none
+          canmount: off
+      - type: zfs
+        id: rpool_ROOT_ubuntu
+        pool: rpool  
+        dataset: rpool/ROOT/ubuntu
+        properties:
           mountpoint: /
-        datasets:
-          - name: rpool/ROOT
-            mountpoint: none
-          - name: rpool/home
-            mountpoint: /home
-
+          canmount: on
       - type: zfs
-        id: zfs-bpool
-        name: bpool
-        pool:
-          vdevs:
-            - type: disk
-              id: nvme0n1p2
-            - type: disk
-              id: nvme0n1p3
+        id: rpool_home
+        pool: rpool
+        dataset: rpool/home
+        properties:
+          mountpoint: /home
+          canmount: on
+      - type: zfs
+        id: bpool_BOOT
+        pool: bpool
+        dataset: bpool/BOOT
+        properties:
           mountpoint: /boot
-        datasets:
-          - name: bpool/BOOT
-            mountpoint: /boot
-
+          canmount: on
       - type: disk
         id: nvme1n1
         ptable: gpt
@@ -111,14 +120,19 @@ autoinstall:
             filesystem: ext4
             wipe: superblock
             mount: /mnt/disco250
-
   # Configuración de paquetes
+  early-commands:
+    - apt-get update
+    - apt-get install -y zfsutils-linux
   packages:
-    - zfsutils-linux
+    - zfsutils-linux 
     - openssh-server
-
+    - zfs-initramfs
+    - linux-modules-extra-$(uname -r)
   # Actualizaciones y limpieza
   updates: security
   late-commands:
-    - echo 'Instalación automatizada completada' > /target/root/autoinstall.log
-    - curtin in-target --target=/target update-grub
+    - echo 'REMAKE_INITRD=yes' > /target/etc/dkms/zfs.conf
+    - curtin in-target --target=/target -- update-initramfs -u -k all
+    - curtin in-target --target=/target -- update-grub
+    - mkdir -p /target/mnt/disco250
